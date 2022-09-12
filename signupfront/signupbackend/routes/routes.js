@@ -2,6 +2,8 @@ const express = require("express");
 const router = express.Router();
 const signUpTemplateCopy = require("../models/SignUpModels");
 const bcrypt = require("bcrypt");
+const User = require("../models/SignUpModels");
+const jwt = require("jsonwebtoken");
 
 router.post("/signup", async (req, res) => {
   const saltPassword = await bcrypt.genSalt(10);
@@ -23,5 +25,37 @@ router.post("/signup", async (req, res) => {
     });
 });
 
+router.post("/login", (req, res) => {
+  User.findOne({ email: req.body.email }).then((user) => {
+    if (user === null) {
+      res
+        .status(401)
+        .json({ message: "paire identifiant/mot de passe incorrecte" });
+    } else {
+      bcrypt
+        .compare(req.body.password, user.password)
+        .then((valid) => {
+          if (!valid) {
+            console.log(user);
+            res.status(401).json({
+              message: "Paire identifiant/mot de passe incorrecte",
+            });
+          } else {
+            res.status(200).json({
+              message: "connecté !",
+              userId: user._id,
+              token: jwt.sign({ userId: user._id }, process.env.SECRET_TOKEN, {
+                expiresIn: "24h",
+              }),
+            });
+          }
+        })
+        .catch((error) => {
+          res.status(500).json({ error });
+        });
+    }
+  });
+});
+router.get("/login");
 router.get("/signin");
 module.exports = router;
